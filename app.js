@@ -67,41 +67,6 @@ app.message('add', async({ message, say}) => {
     }
 });
 
-// app.message(':hello:', async({ message, say }) => {
-//     // console.log('message received: ', message);
-//     // await say(`Hey there <@${message.user}>!`);
-//     await say({
-//         blocks: [
-//             {
-//                 'type': 'section', 
-//                 'text': {
-//                     'type': 'mrkdwn',
-//                     'text': `Hey there <@${message.user}>!`
-//                 },
-//                 'accessory': {
-//                     'type': 'button', 
-//                     'text': {
-//                         'type': 'plain_text',
-//                         'text': 'Click me'
-//                     },
-//                     'action_id': 'button_click'
-//                 }
-//             }
-//         ],
-//         text: `Hey there <@${message.user}>!`
-//     });
-// });
-
-// app.command('/echo', async ({ command, ack, respond }) => {
-//     await ack();
-//     await respond(`${command.text}`);
-// });
-
-app.action('button_click', async({ body, ack, say }) => {
-    await ack();
-    await say(`<@${body.user.id}> clicked the button`);
-});
-
 (async () => {
     await app.start(process.env.PORT || 3000);
     console.log('Bolt app is running!');
