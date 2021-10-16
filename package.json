@@ -1,0 +1,15 @@
+{
+  "name": "first-bolt-app",
+  "version": "1.0.0",
+  "description": "slack bot",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@slack/bolt": "^3.7.0"
+  }
+}

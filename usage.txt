@@ -1,0 +1,6 @@
+1. @bot list
+response: {}, {}, ... (course names)
+2. @bot link {course-name}
+response: {url} / not found
+3. @bot add {course-name} {course-url}
+response: {course-name} has been added! / {course-name} is existing
