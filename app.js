@@ -9,13 +9,6 @@ const app = new App({
 });
 
 const urlMaster = new URLMaster();
-// console.log(urlMaster.data);
-// console.log(urlMaster.getList());
-// console.log(urlMaster.getURL('js'));
-// console.log(urlMaster.getURL('go'));
-// console.log(urlMaster.addURL('js', 'abc'));
-// console.log(urlMaster.addURL('go', "https://learnku.com/docs/the-way-to-go"));
-// urlMaster.save();
 
 app.message('list', async({ message, say }) => {
     // console.log(message);

@@ -2,9 +2,13 @@
 const fs = require('fs');
 
 const loadData = (fileName) => {
-    const rawData = fs.readFileSync(fileName);
-    const dataObj = JSON.parse(rawData);
-    return dataObj; 
+    try {
+        const rawData = fs.readFileSync(fileName);
+        const dataObj = JSON.parse(rawData);
+        return dataObj; 
+    } catch (error) {
+        return {};
+    }
 }
 
 exports.loadData = loadData;
