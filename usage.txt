@@ -4,3 +4,8 @@ response: {}, {}, ... (course names)
 response: {url} / not found
 3. @bot add {course-name} {course-url}
 response: {course-name} has been added! / {course-name} is existing
+(if the account has not registered yet, then "add" operation will be permission denied)
+4. @bot register {mail-address} {passcode}
+response: validation mail has been sent to {mail-address}!
+5. @bot activate {validation-code}
+response: your account is activated with email address {mail-address}! / validation code is incorrect!

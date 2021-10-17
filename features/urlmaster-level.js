@@ -1,26 +1,12 @@
 'use strict';
 
 const level = require('level');
+const { createError, createResponse } = require('./response/response');
 
-function createError(msg) {
-    return {
-        status: 'error', 
-        msg: msg
-    };
-}
-function createResponse(res) {
-    return {
-        status: 'success', 
-        response: res
-    };
-}
-
-// const defaultFileName = 'data.json';
 const defaultDBName = 'urls';
 
-function URLMaster(dbName) {
-    // this.dataFileName = dataFileName ? dataFileName : defaultFileName;
-    // this.data = loadData(this.dataFileName);
+function URLMaster(dbName, userSystem) {
+    this.userSystem = userSystem;
     this.dbName = dbName || defaultDBName;
     this.dbName = './leveldb/' + this.dbName;
     this.db = level(this.dbName, { valueEncoding: 'json' });
@@ -63,7 +49,11 @@ function URLMaster(dbName) {
         }
     }
     
-    this.addURLService = async function(name, url) {
+    this.addURLService = async function(name, url, userId) {
+        let activated = await this.userSystem.isActivated(userId);
+        if (!activated) {
+            return createError("Permission denied: please register before adding urls.");
+        }
         let existURL = await this.getURL(name);
         if (existURL) {
             if (existURL === url) {
