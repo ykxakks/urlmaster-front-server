@@ -1,9 +1,6 @@
 'use strict';
 
-const level = require('level')
-
-const loadData = require('./dataloader').loadData;
-const fs = require('fs');
+const level = require('level');
 
 function createError(msg) {
     return {
