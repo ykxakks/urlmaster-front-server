@@ -1,5 +1,6 @@
 const { App } = require('@slack/bolt');
-const URLMaster = require('./features/urlmaster');
+// const URLMaster = require('./features/urlmaster');
+const URLMaster = require('./features/urlmaster-level');
 
 const app = new App({
     token: process.env.SLACK_BOT_TOKEN,
@@ -9,20 +10,21 @@ const app = new App({
 });
 
 const urlMaster = new URLMaster();
+// console.log(urlMaster.db);
 
 app.message('list', async({ message, say }) => {
     // console.log(message);
-    const messageContent = message.text.trim();
+    const messageContent = message.text.trim().replace(/\s/g, ' ');
     if (messageContent !== 'list') {
         return ;
     }
-    const res = urlMaster.getList();
+    const res = await urlMaster.getListService();
     const msg = 'Lectures: ' + res.response.join('/');
     await say(msg);
 });
 
 app.message('link', async({ message, say }) => {
-    const messageContent = message.text.trim();
+    const messageContent = message.text.trim().replace(/\s/g, ' ');
     const contents = messageContent.split(' ');
     if (contents.length < 2) {
         return ;
@@ -31,7 +33,7 @@ app.message('link', async({ message, say }) => {
         return ;
     }
     const lectureName = contents[1];
-    const res = urlMaster.getURL(lectureName);
+    const res = await urlMaster.getURLService(lectureName);
     if (res.status === 'error') {
         await say(res.msg);
     } else {
@@ -41,7 +43,7 @@ app.message('link', async({ message, say }) => {
 });
 
 app.message('add', async({ message, say}) => {
-    const messageContent = message.text.trim();
+    const messageContent = message.text.trim().replace(/\s/g, ' ');
     const contents = messageContent.split(' ');
     if (contents.length < 3) {
         return ;
@@ -51,7 +53,7 @@ app.message('add', async({ message, say}) => {
     }
     const lectureName = contents[1];
     const url = contents[2];
-    const res = urlMaster.addURL(lectureName, url);
+    const res = await urlMaster.addURLService(lectureName, url);
     if (res.status === 'error') {
         await say(res.msg);
     } else {
