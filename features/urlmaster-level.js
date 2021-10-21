@@ -74,7 +74,7 @@ function URLMaster(dbName, userSystem) {
             case 'detail': {
                 return this.getDetailService(action);
             }
-            case 'register': case 'activate': case 'myalias': case 'unset-alias': {
+            case 'register': case 'activate': case 'myalias': case 'unset-alias': case 'retire': {
                 return this.userSystem.dispatch(action);
             }
             default: {
@@ -281,28 +281,15 @@ function URLMaster(dbName, userSystem) {
         }
     }
     this.attendLectureService = async ({userId, code}) => {
-        const activated = await this.userSystem.isActivated(userId);
-        if (!activated) {
-            return createError("Permission denied: please register before adding urls.");
-        }
         const course = await this.getCourse(code);
         if (!course) {
             return createError(`Course with code ${code} does not exist.`);
         }
         const name = course.name;
-        const user = await this.userSystem.getUser(userId);
-        user.courses.push(code);
-        let warningMessage = '';
-        if (user.alias.hasOwnProperty(name)) {
-            warningMessage = `\nWarning: ${name} has already been used as an alias of another lecture, so please set another alias for this lecture of code ${code}.`;
-        }
-        user.alias[name] = code;
-        const err = await this.userSystem.db.put(userId, user).catch((error) => error);
-        if (err) {
-            return createError(`Fail in attending lecture ${name} of code ${code}.`);
-        } else {
-            return createResponse(`Successfully attended lecture ${name} of code ${code}.` + warningMessage);
-        }
+        return this.userSystem.dispatch({
+            command: 'attend', 
+            userId, code, name
+        });
     }
 
     this.setAliasService = async ({userId, alias, code}) => {
