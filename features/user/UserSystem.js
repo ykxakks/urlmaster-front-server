@@ -24,7 +24,7 @@ function newUser({mail, validationCode}) {
 }
 
 const notActivatedErrorMessage = "Your account has not been activated yet.";
-const notRegisteredErrorMessage = "You has not registered yet.";
+const notRegisteredErrorMessage = "You have not registered yet.";
 
 function UserSystem(mailCheckers) {
     this.dbName = 'user';
@@ -126,10 +126,10 @@ function UserSystem(mailCheckers) {
     this.activateService = async ({userId, validationCode}) => {
         let user = await this.getUser(userId);
         if (!user) {
-            return createError("You has not registered yet. Send register <email-address> <passcode> to receive a activation mail.");
+            return createError("You have not registered yet. Send register <email-address> <passcode> to receive a activation mail.");
         }
         if (user && user.activated) {
-            return createError("You has already activated your account!");
+            return createError("You have already activated your account!");
         }
         if (validationCode === user.validationCode) {
             let err = await this.setUser(userId, {

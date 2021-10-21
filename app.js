@@ -168,6 +168,26 @@ app.message('attend', async({ message, say }) => {
     }
 });
 
+app.message('set-alias', async({ message, say }) => {
+    const contents = checkParameter(message, 'set-alias', 3);
+    if (!contents) {
+        return ;
+    }
+    const alias = contents[1];
+    const code = contents[2];
+    const res = await urlMaster.dispatch({
+        command: contents[0],
+        userId: message.user,
+        alias,
+        code
+    });
+    if (res.status === 'error') {
+        await say(res.msg);
+    } else {
+        await say(res.response);
+    }
+});
+
 (async () => {
     await app.start(process.env.PORT || 3000);
     console.log('Bolt app is running!');
