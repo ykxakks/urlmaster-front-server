@@ -4,6 +4,7 @@ const { validateEmail } = require('../mail/validateEmail');
 const { createValidationMail } = require('../mail/mailTemplates');
 const { createResponse, createError } = require('../response/response');
 const randomFns = require('../funcs/randomFns');
+const { stringFromObj } = require('../funcs/stringFromObj');
 
 // function createUser(mailAddress) {
 //     return {
@@ -24,7 +25,7 @@ function newUser({mail, validationCode}) {
 }
 
 const notActivatedErrorMessage = "Your account has not been activated yet.";
-const notRegisteredErrorMessage = "You has not registered yet.";
+const notRegisteredErrorMessage = "You have not registered yet.";
 
 function UserSystem(mailCheckers) {
     this.dbName = 'user';
@@ -53,6 +54,9 @@ function UserSystem(mailCheckers) {
             }
             case 'decode': {
                 return this.decodeService(action);
+            }
+            case 'myalias': {
+                return this.getAliasService(action);
             }
             default: {
                 return createError(`command ${action.command} not found`);
@@ -126,10 +130,10 @@ function UserSystem(mailCheckers) {
     this.activateService = async ({userId, validationCode}) => {
         let user = await this.getUser(userId);
         if (!user) {
-            return createError("You has not registered yet. Send register <email-address> <passcode> to receive a activation mail.");
+            return createError("You have not registered yet. Send register <email-address> <passcode> to receive a activation mail.");
         }
         if (user && user.activated) {
-            return createError("You has already activated your account!");
+            return createError("You have already activated your account!");
         }
         if (validationCode === user.validationCode) {
             let err = await this.setUser(userId, {
@@ -179,9 +183,34 @@ function UserSystem(mailCheckers) {
         }
         return createResponse(user.alias[alias]);
     }
+
+    this.getAliasService = async ({userId}) => {
+        let user = await this.getUser(userId);
+        if (!user) {
+            return createError(notRegisteredErrorMessage);
+        }
+        if (!user.activated) {
+            return createError(notActivatedErrorMessage);
+        }
+        return createResponse(stringFromObj('alias', user.alias, true));
+    }
     this.isActivated = async (userId) => {
         let user = await this.getUser(userId);
         return Boolean(user && user.activated);
+    }
+    this.isAttending = async (userId, alias) => {
+        const user = await this.getUser(userId);
+        if (!Boolean(user && user.activated)) {
+            return false;
+        }
+        if (user.courses.includes(alias)) {
+            return true;
+        } else if (alias in user.alias) {
+            const code = user.alias[alias];
+            return user.courses.includes(code);
+        } else {
+            return false;
+        }
     }
 }
 
