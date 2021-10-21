@@ -64,6 +64,12 @@ function UserSystem(mailCheckers) {
             case 'unset-alias': {
                 return this.unsetAliasService(action);
             }
+            case 'attend': {
+                return this.attendLectureService(action);
+            }
+            case 'retire': {
+                return this.retireLectureService(action);
+            }
             default: {
                 return createError(`command ${action.command} not found`);
             }
@@ -202,9 +208,11 @@ function UserSystem(mailCheckers) {
     }
     this.setAliasService = async ({userId, alias, code}) => {
         const user = await this.getUser(userId);
-        const activated = Boolean(user && user.activated);
-        if (!activated) {
-            return createError("Permission denied: please register before adding urls.");
+        if (!user) {
+            return createError(notRegisteredErrorMessage);
+        }
+        if (!user.activated) {
+            return createError(notActivatedErrorMessage);
         }
         if (!user.courses.includes(code)) {
             return createError(`You are not attending course ${code}.`);
@@ -228,9 +236,11 @@ function UserSystem(mailCheckers) {
     }
     this.unsetAliasService = async ({userId, alias}) => {
         const user = await this.getUser(userId);
-        const activated = Boolean(user && user.activated);
-        if (!activated) {
-            return createError("Permission denied: please register before adding urls.");
+        if (!user) {
+            return createError(notRegisteredErrorMessage);
+        }
+        if (!user.activated) {
+            return createError(notActivatedErrorMessage);
         }
         if (!(alias in user.alias)) {
             return createError(`Alias ${alias} does not exist.`);
@@ -241,6 +251,67 @@ function UserSystem(mailCheckers) {
             return createError(`Fail in unsetting alias ${alias}.`);
         } else {
             return createResponse(`Successfully unset alias ${alias}.`);
+        }
+    }
+    this.attendLectureService = async ({userId, code, name}) => {
+        const user = await this.getUser(userId);
+        if (!user) {
+            return createError(notRegisteredErrorMessage);
+        }
+        if (!user.activated) {
+            return createError(notActivatedErrorMessage);
+        }
+        user.courses.push(code);
+        let warningMessage = '';
+        if (user.alias.hasOwnProperty(name)) {
+            warningMessage = `\nWarning: ${name} has already been used as an alias of another lecture, so please set another alias for this lecture of code ${code}.`;
+        }
+        user.alias[name] = code;
+        const err = await this.db.put(userId, user).catch((error) => error);
+        if (err) {
+            return createError(`Fail in attending lecture ${name} of code ${code}.`);
+        } else {
+            return createResponse(`Successfully attended lecture ${name} of code ${code}.` + warningMessage);
+        }
+    }
+    this.retireLectureService = async ({userId, alias}) => {
+        // const user = await this.getUser(userId);
+        // const activated = Boolean(user && user.activated);
+        // if (!activated) {
+        //     return createError("Permission denied: please register before adding urls.");
+        // }
+        // if (user.courses.includes(alias)) {
+        //     return createResponse(alias);
+        // }
+        // if (!user.alias.hasOwnProperty(alias)) {
+        //     return createError(`Alias ${alias} is not found.`);
+        // }
+        const codeResponse = await this.decodeService({ userId, alias }); // TODO: do this with user to make better time-cost
+        if (codeResponse.status === 'error') {
+            return codeResponse;
+        }
+        const code = codeResponse.response;
+        const user = await this.getUser(userId);
+        if (!user.courses.includes(code)) {
+            return createError(`You are not attending course ${alias}.`);
+        }
+        const removeAlias = [];
+        for (let alias in user.alias) {
+            if (user.alias[alias] === code) {
+                removeAlias.push(alias);
+            }
+        }
+        const index = user.courses.indexOf(code);
+        user.courses.splice(index, 1);
+        for (let alias of removeAlias) {
+            delete user.alias[alias];
+        }
+        const removeAliasStr = (removeAlias.length === 0) ? '' : (' Alias ' + removeAlias.join("/") + ' has been removed.');
+        const err = await this.db.put(userId, user).catch((error) => error);
+        if (err) {
+            return createError(`Fail in retiring lecture ${alias} of code ${code}.`);
+        } else {
+            return createResponse(`You have retired from lecture ${alias}.` + removeAliasStr);
         }
     }
     this.isActivated = async (userId) => {

@@ -217,6 +217,25 @@ app.message('attend', async({ message, say }) => {
     }
 });
 
+const retireListener = async({ message, say }) => {
+    const contents = checkParameter(message, 'retire', 2);
+    if (!contents) {
+        return ;
+    }
+    const alias = contents[1];
+    const res = await urlMaster.dispatch({
+        command: contents[0],
+        userId: message.user,
+        alias
+    });
+    if (res.status === 'error') {
+        await say(res.msg);
+    } else {
+        await say(res.response);
+    }
+};
+app.message('retire', retireListener);
+
 app.message('set-alias', async({ message, say }) => {
     const contents = checkParameter(message, 'set-alias', 3);
     if (!contents) {
