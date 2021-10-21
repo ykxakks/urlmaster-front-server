@@ -191,7 +191,7 @@ function URLMaster(dbName, userSystem) {
     }
     
     this.addURLService = async ({userId, alias, urlName, url}) => {
-        const checkUserResponse = this.userSystem.dispatch({
+        const checkUserResponse = await this.userSystem.dispatch({
             command: 'check-user',
             userId
         });
@@ -233,7 +233,7 @@ function URLMaster(dbName, userSystem) {
     }
 
     this.addInfoService = async ({userId, alias, infoName, info}) => {
-        const checkUserResponse = this.userSystem.dispatch({
+        const checkUserResponse = await this.userSystem.dispatch({
             command: 'check-user',
             userId
         });
@@ -270,7 +270,7 @@ function URLMaster(dbName, userSystem) {
         }
     }
     this.addLectureService = async ({userId, code, name}) => {
-        const checkUserResponse = this.userSystem.dispatch({
+        const checkUserResponse = await this.userSystem.dispatch({
             command: 'check-user',
             userId
         });
@@ -313,6 +313,13 @@ function URLMaster(dbName, userSystem) {
     }
 
     this.getDetailService = async ({userId, alias}) => {
+        const checkUserResponse = await this.userSystem.dispatch({
+            command: 'check-user',
+            userId
+        });
+        if (checkUserResponse.status === 'error') {
+            return checkUserResponse;
+        }
         const isAttending = await this.userSystem.isAttending(userId, alias);
         const codeResponse = (isAttending) ? (await this.userSystem.dispatch({ command: 'decode', userId, alias})) : {status: 'success', response: alias};
         if (codeResponse.status === 'error') {
