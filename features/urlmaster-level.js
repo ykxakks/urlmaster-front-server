@@ -71,7 +71,7 @@ function URLMaster(dbName, userSystem) {
             case 'detail': {
                 return this.getDetailService(action);
             }
-            case 'register': case 'activate': case 'myalias': {
+            case 'register': case 'activate': case 'myalias': case 'unset-alias': {
                 return this.userSystem.dispatch(action);
             }
             default: {
@@ -287,13 +287,17 @@ function URLMaster(dbName, userSystem) {
     }
 
     this.setAliasService = async ({userId, alias, code}) => {
-        const activated = await this.userSystem.isActivated(userId);
-        if (!activated) {
-            return createError("Permission denied: please register before adding urls.");
-        }
         const course = await this.getCourse(code);
         if (!course) {
             return createError(`Course with code ${code} does not exist.`);
+        }
+        return this.userSystem.dispatch({
+            command: 'set-alias',
+            userId, alias, code
+        });
+        const activated = await this.userSystem.isActivated(userId);
+        if (!activated) {
+            return createError("Permission denied: please register before adding urls.");
         }
         const user = await this.userSystem.getUser(userId);
         if (!user.courses.includes(code)) {

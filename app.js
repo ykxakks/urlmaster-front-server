@@ -212,6 +212,24 @@ app.message('set-alias', async({ message, say }) => {
     }
 });
 
+app.message('unset-alias', async({ message, say }) => {
+    const contents = checkParameter(message, 'unset-alias', 2);
+    if (!contents) {
+        return ;
+    }
+    const alias = contents[1];
+    const res = await urlMaster.dispatch({
+        command: contents[0],
+        userId: message.user,
+        alias,
+    });
+    if (res.status === 'error') {
+        await say(res.msg);
+    } else {
+        await say(res.response);
+    }
+});
+
 app.message('detail', async({ message, say }) => {
     const contents = checkParameter(message, 'detail', 2);
     if (!contents) {
