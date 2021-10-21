@@ -243,7 +243,7 @@ function URLMaster(dbName, userSystem) {
         if (existInfo) {
             const infoDescriber = this.getInfoDescriber(alias, infoName);
             if (existInfo === existInfo) {
-                return createError(`Info ${urlDescriber} has already been set.`);
+                return createError(`Info ${infoDescriber} has already been set.`);
             } else {
                 return createError(`Info ${infoDescriber} has already been set to ${existInfo}.`);
             }
