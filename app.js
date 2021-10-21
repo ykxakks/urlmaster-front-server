@@ -138,13 +138,13 @@ app.message('add-info', async({ message, say}) => {
 });
 
 app.message('register', async({ message, say }) => {
-    const contents = checkParameter(message, 'register', 3);
+    const contents = checkParameter(message, 'register', 2);
     if (!contents) {
         return ;
     }
     const userId = message.user;
     const mailAddress = decodeEmail(contents[1]);
-    const passcode = contents[2];
+    const passcode = (contents.length > 2) ? contents[2] : null;
 
     const res = await urlMaster.dispatch({
         command: 'register',
