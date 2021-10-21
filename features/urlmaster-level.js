@@ -2,8 +2,8 @@
 
 const level = require('level');
 const { createError, createResponse } = require('./response/response');
-const { encodeCourseList, createCourse } = require('../features/course/courseFuncs');
-
+const { encodeCourseList, createCourse } = require('./course/courseFuncs');
+const { stringFromObj } = require('./funcs/stringFromObj')
 
 const defaultDBName = 'course';
 
@@ -14,6 +14,22 @@ function newCourse({name}) {
     course.urls = {};
     course.defaultURL = null;
     return course;
+}
+
+function courseDetail(code, course, isAttending) {
+    const basicInfo = `${code} ${course.name}` + ((isAttending) ? ' (attending)' : ' (not attending)');
+    if (!isAttending) {
+        return basicInfo;
+    }
+    let extendInfo = '';
+    if (course.defaultURL) {
+        extendInfo += `\nDefault URL: ${course.defaultURL}`;
+    }
+    const infoString = stringFromObj('info', course.info);
+    const urlString = stringFromObj('urls', course.urls);
+    extendInfo += infoString;
+    extendInfo += urlString;
+    return basicInfo + extendInfo;
 }
 
 function URLMaster(dbName, userSystem) {
@@ -40,6 +56,9 @@ function URLMaster(dbName, userSystem) {
             case 'add-url': {
                 return this.addURLService(action);
             }
+            case 'add-info': {
+                return this.addInfoService(action);
+            }
             case 'init-lecture': {
                 return this.addLectureService(action);
             }
@@ -49,7 +68,10 @@ function URLMaster(dbName, userSystem) {
             case 'set-alias': {
                 return this.setAliasService(action);
             }
-            case 'register': case 'activate': {
+            case 'detail': {
+                return this.getDetailService(action);
+            }
+            case 'register': case 'activate': case 'myalias': {
                 return this.userSystem.dispatch(action);
             }
             default: {
@@ -63,7 +85,7 @@ function URLMaster(dbName, userSystem) {
         return Boolean(url);
     }
     this.getURL = async (code, urlName) => {
-        let course = await this.db.get(code).catch(() => {});
+        const course = await this.db.get(code).catch(() => {});
         if (!course) {
             return null;
         }
@@ -72,6 +94,13 @@ function URLMaster(dbName, userSystem) {
         } else {
             return course.defaultURL;
         }
+    }
+    this.getInfo = async (code, infoName) => {
+        const course = await this.db.get(code).catch(() => {});
+        if (!course) {
+            return null;
+        }
+        return course.info[infoName];
     }
     this.getCourseList = async () => {
         const courseArray = [];
@@ -96,7 +125,7 @@ function URLMaster(dbName, userSystem) {
     this.getCourseListService = async () => {
         // no register/activate needed
         const courseArray = await this.getCourseList();
-        return createResponse('Lectures: ' + encodeCourseList(courseArray));
+        return createResponse('Lectures:' + encodeCourseList(courseArray));
     }
 
     this.getMyListService = async ({userId}) => {
@@ -115,12 +144,15 @@ function URLMaster(dbName, userSystem) {
                 return createCourse(code, course.name);
             }));
             // console.log(courses);
-            return createResponse('Lectures: ' + encodeCourseList(courses));
+            return createResponse('Lectures:' + encodeCourseList(courses));
         }
     }
 
     this.getURLDescriber = (alias, urlName) => {
         return urlName ? `${alias}/${urlName}` : `${alias}`;
+    }
+    this.getInfoDescriber = (alias, infoName) => {
+        return `${alias}/${infoName}`;
     }
 
     this.getURLService = async ({userId, alias, urlName}) => {
@@ -153,9 +185,9 @@ function URLMaster(dbName, userSystem) {
         if (existURL) {
             const urlDescriber = this.getURLDescriber(alias, urlName);
             if (existURL === url) {
-                return createError(`${urlDescriber} has already been set.`);
+                return createError(`URL ${urlDescriber} has already been set.`);
             } else {
-                return createError(`${urlDescriber} has already been set to ${existURL}.`);
+                return createError(`URL ${urlDescriber} has already been set to ${existURL}.`);
             }
         } else {
             const course = await this.getCourse(code);
@@ -170,9 +202,44 @@ function URLMaster(dbName, userSystem) {
             const err = await this.db.put(code, course).catch((error) => error);
             const urlDescriber = this.getURLDescriber(alias, urlName);
             if (err) {
-                return createError(`Fail in saving url ${name}: ${url}`);
+                return createError(`Fail in saving url ${urlDescriber}: ${url}`);
             } else {
                 const response = `URL of lecture ${urlDescriber} has been successfully added as ${url}.`;
+                return createResponse(response);
+            }
+        }
+    }
+
+    this.addInfoService = async ({userId, alias, infoName, info}) => {
+        let activated = await this.userSystem.isActivated(userId);
+        if (!activated) {
+            return createError("Permission denied: please register before adding urls.");
+        }
+        const codeResponse = await this.userSystem.dispatch({ command: 'decode', userId, alias});
+        if (codeResponse.status === 'error') {
+            return codeResponse;
+        }
+        const code = codeResponse.response;
+        const existInfo = await this.getInfo(code, infoName);
+        if (existInfo) {
+            const infoDescriber = this.getInfoDescriber(alias, infoName);
+            if (existInfo === existInfo) {
+                return createError(`Info ${urlDescriber} has already been set.`);
+            } else {
+                return createError(`Info ${infoDescriber} has already been set to ${existInfo}.`);
+            }
+        } else {
+            const course = await this.getCourse(code);
+            if (!course) {
+                return createError(`Course ${alias} has not been found.`);
+            }
+            course.info[infoName] = info;
+            const err = await this.db.put(code, course).catch((error) => error);
+            const infoDescriber = this.getInfoDescriber(alias, infoName);
+            if (err) {
+                return createError(`Fail in saving info ${infoDescriber}: ${info}`);
+            } else {
+                const response = `URL of lecture ${infoDescriber} has been successfully added as ${info}.`;
                 return createResponse(response);
             }
         }
@@ -248,6 +315,21 @@ function URLMaster(dbName, userSystem) {
         } else {
             return createResponse(message);
         }
+    }
+
+    this.getDetailService = async ({userId, alias}) => {
+        const isAttending = await this.userSystem.isAttending(userId, alias);
+        const codeResponse = (isAttending) ? (await this.userSystem.dispatch({ command: 'decode', userId, alias})) : {status: 'success', response: alias};
+        if (codeResponse.status === 'error') {
+            return codeResponse;
+        }
+        const code = codeResponse.response;
+        const course = await this.getCourse(code);
+        if (!course) {
+            return createError(`Course ${alias} does not exist.`);
+        }
+        const response = courseDetail(code, course, isAttending);
+        return createResponse(response);
     }
 }
 
