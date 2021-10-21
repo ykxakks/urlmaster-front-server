@@ -164,7 +164,7 @@ function UserSystem(mailCheckers) {
         // accept a alias(maybe already a code)
         // if it is a code: return the code
         // otherwise, return the code from the alias set by the user.
-        let user = await history.getUser(userId);
+        let user = await this.getUser(userId);
         if (!user) {
             return createError(notRegisteredErrorMessage);
         }

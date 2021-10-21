@@ -43,6 +43,9 @@ function URLMaster(dbName, userSystem) {
             case 'init-lecture': {
                 return this.addLectureService(action);
             }
+            case 'attend': {
+                return this.attendLectureService(action);
+            }
             case 'register': case 'activate': {
                 return this.userSystem.dispatch(action);
             }
@@ -103,10 +106,11 @@ function URLMaster(dbName, userSystem) {
             const myList = myListResponse.response; // list of codes
             // console.log("myList:", myList);
             // console.log(myList);
-            const courses = await myList.map(async (code) => {
+            const courses = await Promise.all(myList.map(async (code) => {
                 const course = await this.getCourse(code);
+                // console.log(course);
                 return createCourse(code, course.name);
-            });
+            }));
             // console.log(courses);
             return createResponse('Lectures: ' + encodeCourseList(courses));
         }
@@ -118,7 +122,7 @@ function URLMaster(dbName, userSystem) {
 
     this.getURLService = async ({userId, alias, urlName}) => {
         const codeResponse = await this.userSystem.dispatch({ command: 'decode', userId, alias});
-        if (codeRes.status === 'error') {
+        if (codeResponse.status === 'error') {
             return codeResponse;
         }
         const code = codeResponse.response;
@@ -138,7 +142,7 @@ function URLMaster(dbName, userSystem) {
             return createError("Permission denied: please register before adding urls.");
         }
         const codeResponse = await this.userSystem.dispatch({ command: 'decode', userId, alias});
-        if (codeRes.status === 'error') {
+        if (codeResponse.status === 'error') {
             return codeResponse;
         }
         const code = codeResponse.response;
@@ -182,9 +186,33 @@ function URLMaster(dbName, userSystem) {
         course = newCourse({name}); 
         const err = await this.db.put(code, course).catch((error) => error);
         if (err) {
-            return createError(`Fail in initializing lecture ${name} of code ${code}`);
+            return createError(`Fail in initializing lecture ${name} of code ${code}.`);
         } else {
             return createResponse(`Lecture ${name} has been successfully created with code ${code}.`);
+        }
+    }
+    this.attendLectureService = async ({userId, code}) => {
+        const activated = await this.userSystem.isActivated(userId);
+        if (!activated) {
+            return createError("Permission denied: please register before adding urls.");
+        }
+        const course = await this.getCourse(code);
+        if (!course) {
+            return createError(`Course with code ${code} does not exist.`);
+        }
+        const name = course.name;
+        const user = await this.userSystem.getUser(userId);
+        user.courses.push(code);
+        let warningMessage = '';
+        if (user.alias.hasOwnProperty(name)) {
+            warningMessage = `\nWarning: ${name} has already been used as an alias of another lecture, so please set another alias for this lecture of code ${code}.`;
+        }
+        user.alias[name] = code;
+        const err = await this.userSystem.db.put(userId, user).catch((error) => error);
+        if (err) {
+            return createError(`Fail in attending lecture ${name} of code ${code}.`);
+        } else {
+            return createResponse(`Successfully attended lecture ${name} of code ${code}.` + warningMessage);
         }
     }
 }

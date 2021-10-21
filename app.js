@@ -150,6 +150,24 @@ app.message('init-lecture', async({ message, say }) => {
     }
 });
 
+app.message('attend', async({ message, say }) => {
+    const contents = checkParameter(message, 'attend', 2);
+    if (!contents) {
+        return ;
+    }
+    const code = contents[1];
+    const res = await urlMaster.dispatch({
+        command: contents[0],
+        userId: message.user,
+        code
+    });
+    if (res.status === 'error') {
+        await say(res.msg);
+    } else {
+        await say(res.response);
+    }
+});
+
 (async () => {
     await app.start(process.env.PORT || 3000);
     console.log('Bolt app is running!');
