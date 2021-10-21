@@ -239,7 +239,7 @@ function URLMaster(dbName, userSystem) {
             if (err) {
                 return createError(`Fail in saving info ${infoDescriber}: ${info}`);
             } else {
-                const response = `URL of lecture ${infoDescriber} has been successfully added as ${info}.`;
+                const response = `Info of lecture ${infoDescriber} has been successfully added as ${info}.`;
                 return createResponse(response);
             }
         }
