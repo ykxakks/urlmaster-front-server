@@ -1,3 +1,4 @@
+[Deprecated] For information, see google document.
 1. @bot list
 response: {}, {}, ... (course names)
 2. @bot link {course-name}
