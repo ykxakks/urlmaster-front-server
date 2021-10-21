@@ -17,84 +17,92 @@ const urlMaster = new URLMaster('urls', userSystem);
 // console.log(urlMaster.db);
 
 app.message('list', async({ message, say }) => {
-    // console.log(message);
-    // const messageContent = message.text.trim().replace(/\s/g, ' ');
-    // if (messageContent !== 'list') {
-    //     return ;
-    // }
-    let contents = checkParameter(message, 'list', 1);
+    const contents = checkParameter(message, 'list', 1);
     if (!contents) {
         return ;
     }
-    const res = await urlMaster.getListService();
-    const msg = 'Lectures: ' + res.response.join('/');
-    await say(msg);
+    const res = await urlMaster.dispatch({command: 'list'});
+    if (res.status === 'success') {
+        await say(res.response);
+    } else {
+        await say(res.msg);
+    }
+});
+app.message('mylist', async({ message, say }) => {
+    const contents = checkParameter(message, 'mylist', 1);
+    if (!contents) {
+        return ;
+    }
+    const res = await urlMaster.dispatch({
+        command: 'mylist',
+        userId: message.user,
+    });
+    if (res.status === 'success') {
+        await say(res.response);
+    } else {
+        await say(res.msg);
+    }
 });
 
 app.message('link', async({ message, say }) => {
-    // const messageContent = message.text.trim().replace(/\s/g, ' ');
-    // // console.log(message);
-    // const contents = messageContent.split(' ');
-    // if (contents.length < 2) {
-    //     return ;
-    // }
-    // if (contents[0] != 'link') {
-    //     return ;
-    // }
-    let contents = checkParameter(message, 'link', 2);
+    const contents = checkParameter(message, 'link', 2);
     if (!contents) {
         return ;
     }
-    const lectureName = contents[1];
-    const res = await urlMaster.getURLService(lectureName);
+    const lectureAlias = contents[1];
+    const urlName = (contents.length > 2) ? contents[2] : null;
+    const res = await urlMaster.dispatch({
+        command: 'link',
+        userId: message.user,
+        alias: lectureAlias,
+        urlName
+    });
     if (res.status === 'error') {
         await say(res.msg);
     } else {
-        const msg = `URL for lecture ${lectureName} is ${res.response}`;
-        await say(msg);
+        await say(res.response);
     }
 });
 
-app.message('add', async({ message, say}) => {
-    // const messageContent = message.text.trim().replace(/\s/g, ' ');
-    // const contents = messageContent.split(' ');
-    // if (contents.length < 3) {
-    //     return ;
-    // }
-    // if (contents[0] != 'add') {
-    //     return ;
-    // }
-    let contents = checkParameter(message, 'add', 3);
+app.message('add-url', async({ message, say}) => {
+    const contents = checkParameter(message, 'add-url', 4);
+    // add <alias> <urlName> <url>
     if (!contents) {
         return ;
     }
-    const lectureName = contents[1];
-    const url = contents[2];
+    const lectureAlias = contents[1];
+    const urlName = contents[2];
+    const url = contents[3];
     const userId = message.user;
-    const res = await urlMaster.addURLService(lectureName, url, userId);
+    const res = await urlMaster.dispatch({
+        command: 'add-url',
+        userId, 
+        alias: lectureAlias,
+        urlName,
+        url
+    });
     if (res.status === 'error') {
         await say(res.msg);
     } else {
-        const msg = `URL of lecture ${lectureName} has been added as ${url}.`;
-        await say(msg);
+        await say(res.response);
     }
 });
 
 app.message('register', async({ message, say }) => {
-    // console.log(message);
-    // const messageContent = message.text.trim().replace(/\s/g, ' ');
-    // const contents = messageContent.split(' ');
-    // if (contents.length < 3 || contents[0] != 'register') {
-    //     return ;
-    // }
-    let contents = checkParameter(message, 'register', 3);
+    const contents = checkParameter(message, 'register', 3);
     if (!contents) {
         return ;
     }
     const userId = message.user;
     const mailAddress = decodeEmail(contents[1]);
     const passcode = contents[2];
-    let res = await userSystem.register(userId, mailAddress, passcode);
+
+    const res = await urlMaster.dispatch({
+        command: 'register',
+        userId,
+        mailAddress,
+        passcode
+    });
     if (res.status === 'error') {
         await say(res.msg);
     } else {
@@ -103,20 +111,56 @@ app.message('register', async({ message, say }) => {
 });
 
 app.message('activate', async({ message, say }) => {
-    // const messageContent = message.text.trim().replace(/\s/g, ' ');
-    // const contents = messageContent.split(' ');
-    // if (contents.length < 2 || contents[0] != 'activate') {
-    //     return ;
-    // }
-    // console.log(message);
-    let contents = checkParameter(message, 'activate', 2);
+    const contents = checkParameter(message, 'activate', 2);
     if (!contents) {
         return ;
     }
-    let userId = message.user;
+    const userId = message.user;
     let validationCode = contents[1];
-    let res = await userSystem.activate(userId, validationCode);
+    const res = await urlMaster.dispatch({
+        command: 'activate',
+        userId, 
+        validationCode,
+    });
     // console.log(res);
+    if (res.status === 'error') {
+        await say(res.msg);
+    } else {
+        await say(res.response);
+    }
+});
+
+app.message('init-lecture', async({ message, say }) => {
+    const contents = checkParameter(message, 'init-lecture', 3);
+    if (!contents) {
+        return ;
+    }
+    const code = contents[1];
+    const name = contents[2];
+    const res = await urlMaster.dispatch({
+        command: 'init-lecture',
+        userId: message.user,
+        code: code,
+        name: name,
+    });
+    if (res.status === 'error') {
+        await say(res.msg);
+    } else {
+        await say(res.response);
+    }
+});
+
+app.message('attend', async({ message, say }) => {
+    const contents = checkParameter(message, 'attend', 2);
+    if (!contents) {
+        return ;
+    }
+    const code = contents[1];
+    const res = await urlMaster.dispatch({
+        command: contents[0],
+        userId: message.user,
+        code
+    });
     if (res.status === 'error') {
         await say(res.msg);
     } else {

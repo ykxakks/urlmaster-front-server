@@ -3,6 +3,7 @@ const sendMail = require('../mail/sendMail');
 const { validateEmail } = require('../mail/validateEmail');
 const { createValidationMail } = require('../mail/mailTemplates');
 const { createResponse, createError } = require('../response/response');
+const randomFns = require('../funcs/randomFns');
 
 // function createUser(mailAddress) {
 //     return {
@@ -11,16 +12,22 @@ const { createResponse, createError } = require('../response/response');
 //     };
 // }
 
-const randomFns = () => {
-    let code = "";
-    for (let i = 0; i < 6; ++i) {
-        code += parseInt(Math.random() * 10);
-    }
-    return code;
+function newUser({mail, validationCode}) {
+    const user = {};
+    user.activated = false;
+    user.mail = mail;
+    user.validationCode = validationCode;
+    user.courses = [];
+    user.alias = {};
+
+    return user;
 }
 
+const notActivatedErrorMessage = "Your account has not been activated yet.";
+const notRegisteredErrorMessage = "You has not registered yet.";
+
 function UserSystem(mailCheckers) {
-    this.dbName = 'users';
+    this.dbName = 'user';
     this.dbName = './leveldb/' + this.dbName;
 
     this.db = level(this.dbName, { valueEncoding: 'json' });
@@ -29,14 +36,55 @@ function UserSystem(mailCheckers) {
         this.mailCheckers = this.mailCheckers.concat(mailCheckers);
     }
 
-    this.getUser = async function(userId) {
-        return this.db.get(userId).catch(() => {});
-    }
-    this.setUser = async function(userId, user) {
-        return this.db.put(userId, user);
+    this.dispatch = async (action) => {
+        // what should action contains?
+        // userId
+        // command
+        // key-value pairs
+        switch (action.command) {
+            case 'register': {
+                return this.registerService(action);
+            }
+            case 'activate': {
+                return this.activateService(action);
+            }
+            case 'list': {
+                return this.getCourseListService(action);
+            }
+            case 'decode': {
+                return this.decodeService(action);
+            }
+            default: {
+                return createError(`command ${action.command} not found`);
+            }
+        }
     }
 
-    this.register = async function(userId, mailAddress, passcode) {
+    this.getUser = async (userId) => {
+        return this.db.get(userId).catch(() => {});
+    }
+    this.setUser = async (userId, user) => {
+        return this.db.put(userId, user);
+    }
+    this.getAllUserId = async () => {
+        const keyArray = [];
+        return new Promise((resolve, reject) => {
+            this.db.createKeyStream()
+            .on('data', (key) => {
+                // courseArray.push({code: data.key, name: data.value.name});
+                keyArray.push(key);
+            })
+            .on('error', err => {
+                reject(err);
+            })
+            .on('close', () => {
+                resolve(keyArray);
+            });
+        });
+    }
+
+    this.registerService = async ({userId, mailAddress, passcode}) => {
+        // console.log(`registerService(userId = ${userId}, m`)
         for (let checker of this.mailCheckers) {
             if (!checker(mailAddress)) {
                 return createError(`${mailAddress} is an invalid mail address.`);
@@ -55,19 +103,18 @@ function UserSystem(mailCheckers) {
         //     return createError(`Error in setting mail address ${mailAddress}.`);
         // }
         const validationCode = randomFns();
-        const mail = createValidationMail(passcode, validationCode);
+        const mailContents = createValidationMail(passcode, validationCode);
 
         return new Promise((resolve, reject) => {
-            sendMail(mailAddress, mail, async (error, data) => {
+            sendMail(mailAddress, mailContents, async (error, data) => {
                 if (error) {
                     console.log(error);
                     resolve(createError("Error in sending email to your address: please check email address."));
                 }
-                let err = await this.setUser(userId, {
+                let err = await this.setUser(userId, newUser({
                     mail: mailAddress, 
-                    validationCode: validationCode,
-                    activated: false
-                });
+                    validationCode,
+                }));
                 if (err) {
                     resolve(createError("Error in saving your email to database."));
                 } else {
@@ -76,13 +123,13 @@ function UserSystem(mailCheckers) {
             });
         });
     }
-    this.activate = async function(userId, validationCode) {
+    this.activateService = async ({userId, validationCode}) => {
         let user = await this.getUser(userId);
         if (!user) {
             return createError("You has not registered yet. Send register <email-address> <passcode> to receive a activation mail.");
         }
         if (user && user.activated) {
-            return createError("you has already activated your account!");
+            return createError("You has already activated your account!");
         }
         if (validationCode === user.validationCode) {
             let err = await this.setUser(userId, {
@@ -96,6 +143,41 @@ function UserSystem(mailCheckers) {
         } else {
             return createError("Incorrect validation code.");
         }
+    }
+
+    this.getCourseListService = async ({userId}) => {
+        const user = await this.getUser(userId);
+        // console.log('user:', user);
+        if (!user) {
+            const userIdList = await this.getAllUserId();
+            // console.log('userIds:', userIdList);
+            // console.log(`userId ${userId} not found.`);
+            return createError(notRegisteredErrorMessage);
+        }
+        if (!user.activated) {
+            return createError(notActivatedErrorMessage);
+        }
+        return createResponse(user.courses);
+    }
+
+    this.decodeService = async ({userId, alias}) => {
+        // accept a alias(maybe already a code)
+        // if it is a code: return the code
+        // otherwise, return the code from the alias set by the user.
+        let user = await this.getUser(userId);
+        if (!user) {
+            return createError(notRegisteredErrorMessage);
+        }
+        if (!user.activated) {
+            return createError(notActivatedErrorMessage);
+        }
+        if (user.courses.includes(alias)) {
+            return createResponse(alias);
+        }
+        if (!user.alias.hasOwnProperty(alias)) {
+            return createError(`Alias ${alias} is not found.`);
+        }
+        return createResponse(user.alias[alias]);
     }
     this.isActivated = async (userId) => {
         let user = await this.getUser(userId);
