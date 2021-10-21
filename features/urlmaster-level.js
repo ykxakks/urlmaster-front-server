@@ -191,9 +191,12 @@ function URLMaster(dbName, userSystem) {
     }
     
     this.addURLService = async ({userId, alias, urlName, url}) => {
-        let activated = await this.userSystem.isActivated(userId);
-        if (!activated) {
-            return createError("Permission denied: please register before adding urls.");
+        const checkUserResponse = this.userSystem.dispatch({
+            command: 'check-user',
+            userId
+        });
+        if (checkUserResponse.status === 'error') {
+            return checkUserResponse;
         }
         const codeResponse = await this.userSystem.dispatch({ command: 'decode', userId, alias});
         if (codeResponse.status === 'error') {
@@ -230,9 +233,12 @@ function URLMaster(dbName, userSystem) {
     }
 
     this.addInfoService = async ({userId, alias, infoName, info}) => {
-        let activated = await this.userSystem.isActivated(userId);
-        if (!activated) {
-            return createError("Permission denied: please register before adding urls.");
+        const checkUserResponse = this.userSystem.dispatch({
+            command: 'check-user',
+            userId
+        });
+        if (checkUserResponse.status === 'error') {
+            return checkUserResponse;
         }
         const codeResponse = await this.userSystem.dispatch({ command: 'decode', userId, alias});
         if (codeResponse.status === 'error') {
@@ -264,9 +270,12 @@ function URLMaster(dbName, userSystem) {
         }
     }
     this.addLectureService = async ({userId, code, name}) => {
-        let activated = await this.userSystem.isActivated(userId);
-        if (!activated) {
-            return createError("Permission denied: please register before adding urls.");
+        const checkUserResponse = this.userSystem.dispatch({
+            command: 'check-user',
+            userId
+        });
+        if (checkUserResponse.status === 'error') {
+            return checkUserResponse;
         }
         let course = await this.getCourse(code);
         if (course) {
@@ -301,30 +310,6 @@ function URLMaster(dbName, userSystem) {
             command: 'set-alias',
             userId, alias, code
         });
-        const activated = await this.userSystem.isActivated(userId);
-        if (!activated) {
-            return createError("Permission denied: please register before adding urls.");
-        }
-        const user = await this.userSystem.getUser(userId);
-        if (!user.courses.includes(code)) {
-            return createError(`You are not attending course ${code}.`);
-        }
-        if (alias in user.alias && user.alias === code) {
-            return createError(`Alias ${alias} is already been set to course ${code}.`);
-        }
-        let message = '';
-        if (alias in user.alias) {
-            message = `Successfully change the alias ${alias} from ${user.alias[alias]} to ${code}.`;
-        } else {
-            message = `Successfully set alias ${alias} to ${code}.`;
-        }
-        user.alias[alias] = code;
-        const err = await this.userSystem.db.put(userId, user).catch((error) => error);
-        if (err) {
-            return createError(`Fail in setting alice ${alias} to ${code}.`);
-        } else {
-            return createResponse(message);
-        }
     }
 
     this.getDetailService = async ({userId, alias}) => {

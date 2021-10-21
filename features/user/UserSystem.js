@@ -70,6 +70,9 @@ function UserSystem(mailCheckers) {
             case 'retire': {
                 return this.retireLectureService(action);
             }
+            case 'check-user': {
+                return this.checkUserIdService(action);
+            }
             default: {
                 return createError(`command ${action.command} not found`);
             }
@@ -196,6 +199,17 @@ function UserSystem(mailCheckers) {
         return createResponse(user.alias[alias]);
     }
 
+    this.checkUserIdService = async ({userId}) => {
+        let user = await this.getUser(userId);
+        if (!user) {
+            return createError(notRegisteredErrorMessage);
+        }
+        if (!user.activated) {
+            return createError(notActivatedErrorMessage);
+        }
+        return createResponse();
+    }
+
     this.getAliasService = async ({userId}) => {
         let user = await this.getUser(userId);
         if (!user) {
@@ -265,8 +279,9 @@ function UserSystem(mailCheckers) {
         let warningMessage = '';
         if (user.alias.hasOwnProperty(name)) {
             warningMessage = `\nWarning: ${name} has already been used as an alias of another lecture, so please set another alias for this lecture of code ${code}.`;
+        } else {
+            user.alias[name] = code;
         }
-        user.alias[name] = code;
         const err = await this.db.put(userId, user).catch((error) => error);
         if (err) {
             return createError(`Fail in attending lecture ${name} of code ${code}.`);
