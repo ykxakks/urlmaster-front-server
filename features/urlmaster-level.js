@@ -53,6 +53,9 @@ function URLMaster(dbName, userSystem) {
             case 'link': {
                 return this.getURLService(action);
             }
+            case 'info': {
+                return this.getInfoService(action);
+            }
             case 'add-url': {
                 return this.addURLService(action);
             }
@@ -167,6 +170,22 @@ function URLMaster(dbName, userSystem) {
             return createError(`URL for ${urlDescriber} not found.`);
         } else {
             const response = `URL for lecture ${urlDescriber} is ${url}.`
+            return createResponse(response);
+        }
+    }
+
+    this.getInfoService = async ({userId, alias, infoName}) => {
+        const codeResponse = await this.userSystem.dispatch({ command: 'decode', userId, alias});
+        if (codeResponse.status === 'error') {
+            return codeResponse;
+        }
+        const code = codeResponse.response;
+        const info = await this.getInfo(code, infoName);
+        const infoDescriber = this.getInfoDescriber(alias, infoName);
+        if (!info) {
+            return createError(`Info ${infoDescriber} not found.`);
+        } else {
+            const response = `Info ${infoDescriber} is ${info}.`
             return createResponse(response);
         }
     }
