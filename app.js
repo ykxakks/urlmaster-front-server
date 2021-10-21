@@ -44,8 +44,8 @@ app.message('mylist', async({ message, say }) => {
     }
 });
 
-app.message('link', async({ message, say }) => {
-    const contents = checkParameter(message, 'link', 2);
+const urlListener = async({ message, say }) => {
+    const contents = checkParameter(message, 'link', 2) || checkParameter(message, 'url', 2);
     if (!contents) {
         return ;
     }
@@ -62,7 +62,32 @@ app.message('link', async({ message, say }) => {
     } else {
         await say(res.response);
     }
-});
+}
+
+const infoListener = async({ message, say }) => {
+    const contents = checkParameter(message, 'info', 3);
+    if (!contents) {
+        return ;
+    }
+    const lectureAlias = contents[1];
+    const infoName = contents[2];
+    const res = await urlMaster.dispatch({
+        command: contents[0],
+        userId: message.user,
+        alias: lectureAlias,
+        infoName
+    });
+    if (res.status === 'error') {
+        await say(res.msg);
+    } else {
+        await say(res.response);
+    }
+}
+
+app.message('link', urlListener);
+app.message('url', urlListener);
+
+app.message('info', infoListener);
 
 app.message('add-url', async({ message, say}) => {
     const contents = checkParameter(message, 'add-url', 4);
@@ -204,6 +229,24 @@ app.message('set-alias', async({ message, say }) => {
         userId: message.user,
         alias,
         code
+    });
+    if (res.status === 'error') {
+        await say(res.msg);
+    } else {
+        await say(res.response);
+    }
+});
+
+app.message('unset-alias', async({ message, say }) => {
+    const contents = checkParameter(message, 'unset-alias', 2);
+    if (!contents) {
+        return ;
+    }
+    const alias = contents[1];
+    const res = await urlMaster.dispatch({
+        command: contents[0],
+        userId: message.user,
+        alias,
     });
     if (res.status === 'error') {
         await say(res.msg);

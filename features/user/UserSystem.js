@@ -58,6 +58,12 @@ function UserSystem(mailCheckers) {
             case 'myalias': {
                 return this.getAliasService(action);
             }
+            case 'set-alias': {
+                return this.setAliasService(action);
+            }
+            case 'unset-alias': {
+                return this.unsetAliasService(action);
+            }
             default: {
                 return createError(`command ${action.command} not found`);
             }
@@ -193,6 +199,49 @@ function UserSystem(mailCheckers) {
             return createError(notActivatedErrorMessage);
         }
         return createResponse(stringFromObj('alias', user.alias, true));
+    }
+    this.setAliasService = async ({userId, alias, code}) => {
+        const user = await this.getUser(userId);
+        const activated = Boolean(user && user.activated);
+        if (!activated) {
+            return createError("Permission denied: please register before adding urls.");
+        }
+        if (!user.courses.includes(code)) {
+            return createError(`You are not attending course ${code}.`);
+        }
+        if (alias in user.alias && user.alias === code) {
+            return createError(`Alias ${alias} is already been set to course ${code}.`);
+        }
+        let message = '';
+        if (alias in user.alias) {
+            message = `Successfully change the alias ${alias} from ${user.alias[alias]} to ${code}.`;
+        } else {
+            message = `Successfully set alias ${alias} to ${code}.`;
+        }
+        user.alias[alias] = code;
+        const err = await this.db.put(userId, user).catch((error) => error);
+        if (err) {
+            return createError(`Fail in setting alias ${alias} to ${code}.`);
+        } else {
+            return createResponse(message);
+        }
+    }
+    this.unsetAliasService = async ({userId, alias}) => {
+        const user = await this.getUser(userId);
+        const activated = Boolean(user && user.activated);
+        if (!activated) {
+            return createError("Permission denied: please register before adding urls.");
+        }
+        if (!(alias in user.alias)) {
+            return createError(`Alias ${alias} does not exist.`);
+        }
+        delete user.alias[alias];
+        const err = await this.db.put(userId, user).catch((error) => error);
+        if (err) {
+            return createError(`Fail in unsetting alias ${alias}.`);
+        } else {
+            return createResponse(`Successfully unset alias ${alias}.`);
+        }
     }
     this.isActivated = async (userId) => {
         let user = await this.getUser(userId);

@@ -53,6 +53,9 @@ function URLMaster(dbName, userSystem) {
             case 'link': {
                 return this.getURLService(action);
             }
+            case 'info': {
+                return this.getInfoService(action);
+            }
             case 'add-url': {
                 return this.addURLService(action);
             }
@@ -71,7 +74,7 @@ function URLMaster(dbName, userSystem) {
             case 'detail': {
                 return this.getDetailService(action);
             }
-            case 'register': case 'activate': case 'myalias': {
+            case 'register': case 'activate': case 'myalias': case 'unset-alias': {
                 return this.userSystem.dispatch(action);
             }
             default: {
@@ -167,6 +170,22 @@ function URLMaster(dbName, userSystem) {
             return createError(`URL for ${urlDescriber} not found.`);
         } else {
             const response = `URL for lecture ${urlDescriber} is ${url}.`
+            return createResponse(response);
+        }
+    }
+
+    this.getInfoService = async ({userId, alias, infoName}) => {
+        const codeResponse = await this.userSystem.dispatch({ command: 'decode', userId, alias});
+        if (codeResponse.status === 'error') {
+            return codeResponse;
+        }
+        const code = codeResponse.response;
+        const info = await this.getInfo(code, infoName);
+        const infoDescriber = this.getInfoDescriber(alias, infoName);
+        if (!info) {
+            return createError(`Info ${infoDescriber} not found.`);
+        } else {
+            const response = `Info ${infoDescriber} is ${info}.`
             return createResponse(response);
         }
     }
@@ -287,13 +306,17 @@ function URLMaster(dbName, userSystem) {
     }
 
     this.setAliasService = async ({userId, alias, code}) => {
-        const activated = await this.userSystem.isActivated(userId);
-        if (!activated) {
-            return createError("Permission denied: please register before adding urls.");
-        }
         const course = await this.getCourse(code);
         if (!course) {
             return createError(`Course with code ${code} does not exist.`);
+        }
+        return this.userSystem.dispatch({
+            command: 'set-alias',
+            userId, alias, code
+        });
+        const activated = await this.userSystem.isActivated(userId);
+        if (!activated) {
+            return createError("Permission denied: please register before adding urls.");
         }
         const user = await this.userSystem.getUser(userId);
         if (!user.courses.includes(code)) {
