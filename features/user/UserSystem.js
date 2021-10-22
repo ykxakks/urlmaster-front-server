@@ -105,9 +105,14 @@ function UserSystem(mailCheckers) {
     this.registerService = async ({userId, mailAddress, passcode}) => {
         // console.log(`registerService(userId = ${userId}, m`)
         for (let checker of this.mailCheckers) {
-            if (!checker(mailAddress)) {
-                return createError(`${mailAddress} is an invalid mail address.`);
+            const res = checker(mailAddress);
+            // console.log(res);
+            if (!res.accepted) {
+                return createError(res.message);
             }
+            // if (!checker(mailAddress)) {
+            //     return createError(`${mailAddress} is an invalid mail address.`);
+            // }
         }
         let user = await this.getUser(userId);
         if (user) {

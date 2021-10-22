@@ -2,7 +2,7 @@ const { App } = require('@slack/bolt');
 // const URLMaster = require('./features/urlmaster');
 const URLMaster = require('./features/urlmaster-level');
 const UserSystem = require('./features/user/UserSystem');
-const { decodeEmail } = require('./features/mail/validateEmail');
+const { decodeEmail, checkDomain } = require('./features/mail/validateEmail');
 const checkParameter = require('./features/funcs/checkParameter');
 
 const app = new App({
@@ -12,7 +12,7 @@ const app = new App({
     appToken: process.env.SLACK_APP_TOKEN
 });
 
-const userSystem = new UserSystem();
+const userSystem = new UserSystem([checkDomain]);
 const urlMaster = new URLMaster('urls', userSystem);
 // console.log(urlMaster.db);
 
