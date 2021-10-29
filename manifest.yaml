@@ -1,0 +1,41 @@
+_metadata:
+  major_version: 1
+  minor_version: 1
+display_information:
+  name: url-master
+features:
+  bot_user:
+    display_name: url-master
+    always_online: false
+  slash_commands:
+    - command: /echo
+      description: echo message
+      usage_hint: message
+      should_escape: true
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read
+      - channels:history
+      - chat:write
+      - groups:history
+      - im:history
+      - im:read
+      - im:write
+      - incoming-webhook
+      - mpim:history
+      - mpim:read
+      - mpim:write
+      - commands
+settings:
+  event_subscriptions:
+    bot_events:
+      - message.channels
+      - message.groups
+      - message.im
+      - message.mpim
+  interactivity:
+    is_enabled: true
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false
