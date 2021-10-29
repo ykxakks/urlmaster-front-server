@@ -42,10 +42,14 @@ source ~/.zshrc
 ```
 in terminal(shell) to add these variables, or start a new terminal and they will be automatically added. The file name(.zshrc) is depending on your shell version. For bash it should be ".bashrc".
 
-9. To use the email services in url-master, you need a mail account. Here we assume you are using a gmail account, then reopen your .zshrc file, and add the following lines at the end:
+9. To use the email services in url-master, you need a mail account to send validation emails. Here we assume you are using a gmail account:
+
+first enter your google mail account page, click your icon on the top-right and click "Manage your Google Account". Click "Security" on the left panel, scroll down and find "Less secure app access", turn it on so we can use smtp server to send emails with JavaScript codes. 
+
+Then reopen your .zshrc file, and add the following lines at the end:
 ```shell
-export URLMASTER_MAIL_USERNAME=<gmail-address>
-export URLMASTER_MAIL_PASSWORD=<gmail-password>
+export URLMASTER_MAIL_USERNAME=<your-gmail-address>
+export URLMASTER_MAIL_PASSWORD=<your-gmail-password>
 ```
 and run 
 ```shell
