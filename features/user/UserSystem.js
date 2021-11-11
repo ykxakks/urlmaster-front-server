@@ -27,6 +27,9 @@ function newUser({mail, validationCode}) {
 const notActivatedErrorMessage = "Your account has not been activated yet.";
 const notRegisteredErrorMessage = "You have not registered yet.";
 
+const defaultSetUserSuccessMessage = "User has been successfully set.";
+const defaultSetUserErrorMessage = "User has not been successfully set.";
+
 function UserSystem(mailCheckers) {
     this.dbName = 'user';
     this.dbName = './leveldb/' + this.dbName;
@@ -82,8 +85,13 @@ function UserSystem(mailCheckers) {
     this.getUser = async (userId) => {
         return this.db.get(userId).catch(() => {});
     }
-    this.setUser = async (userId, user) => {
-        return this.db.put(userId, user);
+    this.setUser = async (userId, user, errorMessage, successMessage) => {
+        const err = await this.db.put(userId, user).catch((error) => error);
+        if (err) {
+            return createError(errorMessage || defaultSetUserErrorMessage);
+        } else {
+            return createResponse(successMessage || defaultSetUserSuccessMessage);
+        }
     }
     this.getAllUserId = async () => {
         const keyArray = [];
@@ -120,12 +128,7 @@ function UserSystem(mailCheckers) {
                 return createError('You have already activated your account!');
             }
             // otherwise, update user address
-            // err = await this.db.put(userId, createUser(mailAddress)).catch((error) => error);
         }
-        // let err = await this.db.put(userId, createUser(mailAddress)).catch((error) => error);
-        // if (err) {
-        //     return createError(`Error in setting mail address ${mailAddress}.`);
-        // }
         const validationCode = randomFns();
         const mailContents = createValidationMail(passcode, validationCode);
 
@@ -135,15 +138,13 @@ function UserSystem(mailCheckers) {
                     console.log(error);
                     resolve(createError("Error in sending email to your address: please check email address."));
                 }
-                let err = await this.setUser(userId, newUser({
+                const errorMessage = "Error in saving your email to database.";
+                const successMessage = "Validation email has been sent to your email address, please activate your account via the code sent.";
+                const response = await this.setUser(userId, newUser({
                     mail: mailAddress, 
                     validationCode,
-                }));
-                if (err) {
-                    resolve(createError("Error in saving your email to database."));
-                } else {
-                    resolve(createResponse("Validation email has been sent to your email address, please activate your account via the code sent."));
-                }
+                }), errorMessage, successMessage);
+                resolve(response);
             });
         });
     }
@@ -156,14 +157,12 @@ function UserSystem(mailCheckers) {
             return createError("You have already activated your account!");
         }
         if (validationCode === user.validationCode) {
-            let err = await this.setUser(userId, {
+            const errorMessage = "Error in activating your account!";
+            const successMessage = "Your account has been activated!";
+            const response = await this.setUser(userId, {
                 ...user, activated: true
-            });
-            if (err) {
-                return createError("Error in activating your account!");
-            } else {
-                return createResponse("Your account has been activated!");
-            }
+            }, errorMessage, successMessage);
+            return response;
         } else {
             return createError("Incorrect validation code.");
         }
@@ -246,12 +245,8 @@ function UserSystem(mailCheckers) {
             message = `Successfully set alias ${alias} to ${code}.`;
         }
         user.alias[alias] = code;
-        const err = await this.db.put(userId, user).catch((error) => error);
-        if (err) {
-            return createError(`Fail in setting alias ${alias} to ${code}.`);
-        } else {
-            return createResponse(message);
-        }
+        const errorMessage = `Fail in setting alias ${alias} to ${code}.`;
+        return await this.setUser(userId, user, errorMessage, message);
     }
     this.unsetAliasService = async ({userId, alias}) => {
         const user = await this.getUser(userId);
@@ -265,12 +260,10 @@ function UserSystem(mailCheckers) {
             return createError(`Alias ${alias} does not exist.`);
         }
         delete user.alias[alias];
-        const err = await this.db.put(userId, user).catch((error) => error);
-        if (err) {
-            return createError(`Fail in unsetting alias ${alias}.`);
-        } else {
-            return createResponse(`Successfully unset alias ${alias}.`);
-        }
+        const errorMessage = `Fail in unsetting alias ${alias}.`;
+        const successMessage = `Successfully unset alias ${alias}.`;
+        const response = await this.setUser(userId, user, errorMessage, successMessage);
+        return response;
     }
     this.attendLectureService = async ({userId, code, name}) => {
         const user = await this.getUser(userId);
@@ -287,12 +280,10 @@ function UserSystem(mailCheckers) {
         } else {
             user.alias[name] = code;
         }
-        const err = await this.db.put(userId, user).catch((error) => error);
-        if (err) {
-            return createError(`Fail in attending lecture ${name} of code ${code}.`);
-        } else {
-            return createResponse(`Successfully attended lecture ${name} of code ${code}.` + warningMessage);
-        }
+        const errorMessage = `Fail in attending lecture ${name} of code ${code}.`;
+        const successMessage = `Successfully attended lecture ${name} of code ${code}.` + warningMessage;
+        const response = await this.setUser(userId, user, errorMessage, successMessage);
+        return response;
     }
     this.retireLectureService = async ({userId, alias}) => {
         // const user = await this.getUser(userId);
@@ -327,12 +318,10 @@ function UserSystem(mailCheckers) {
             delete user.alias[alias];
         }
         const removeAliasStr = (removeAlias.length === 0) ? '' : (' Alias ' + removeAlias.join("/") + ' has been removed.');
-        const err = await this.db.put(userId, user).catch((error) => error);
-        if (err) {
-            return createError(`Fail in retiring lecture ${alias} of code ${code}.`);
-        } else {
-            return createResponse(`You have retired from lecture ${alias}.` + removeAliasStr);
-        }
+        const errorMessage = `Fail in retiring lecture ${alias} of code ${code}.`;
+        const successMessage = `You have retired from lecture ${alias}.` + removeAliasStr;
+        const response = await this.setUser(userId, user, errorMessage, successMessage);
+        return response;
     }
     this.isActivated = async (userId) => {
         let user = await this.getUser(userId);

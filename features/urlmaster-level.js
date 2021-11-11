@@ -32,6 +32,9 @@ function courseDetail(code, course, isAttending) {
     return basicInfo + extendInfo;
 }
 
+const defaultSetCourseSuccessMessage = "Course has been successfully set.";
+const defaultSetCourseErrorMessage = "Course has not been successfully set.";
+
 function URLMaster(dbName, userSystem) {
     this.userSystem = userSystem;
     this.dbName = dbName || defaultDBName;
@@ -83,12 +86,12 @@ function URLMaster(dbName, userSystem) {
         }
     }
 
-    this.hasKey = async (key) => {
-        let url = await this.db.get(key).catch(() => {});
-        return Boolean(url);
+    this.hasKey = async (code) => {
+        let course = await this.getCourse(code);
+        return Boolean(course);
     }
     this.getURL = async (code, urlName) => {
-        const course = await this.db.get(code).catch(() => {});
+        const course = await this.getCourse(code);
         if (!course) {
             return null;
         }
@@ -99,7 +102,7 @@ function URLMaster(dbName, userSystem) {
         }
     }
     this.getInfo = async (code, infoName) => {
-        const course = await this.db.get(code).catch(() => {});
+        const course = await this.getCourse(code);
         if (!course) {
             return null;
         }
@@ -123,6 +126,14 @@ function URLMaster(dbName, userSystem) {
     }
     this.getCourse = async (code) => {
         return await this.db.get(code).catch(() => {});
+    }
+    this.setCourse = async (code, course, errorMessage, successMessage) => {
+        const err = await this.db.put(code, course).catch((error) => error);
+        if (err) {
+            return createError(errorMessage || defaultSetCourseErrorMessage);
+        } else {
+            return createResponse(successMessage || defaultSetCourseSuccessMessage);
+        }
     }
 
     this.getCourseListService = async () => {
@@ -221,14 +232,10 @@ function URLMaster(dbName, userSystem) {
             } else {
                 course.urls[urlName] = url;
             }
-            const err = await this.db.put(code, course).catch((error) => error);
             const urlDescriber = this.getURLDescriber(alias, urlName);
-            if (err) {
-                return createError(`Fail in saving url ${urlDescriber}: ${url}`);
-            } else {
-                const response = `URL of lecture ${urlDescriber} has been successfully added as ${url}.`;
-                return createResponse(response);
-            }
+            const successMessage = `URL of lecture ${urlDescriber} has been successfully added as ${url}.`;
+            const errorMessage = `Fail in saving url ${urlDescriber}: ${url}`;
+            return await this.setCourse(code, course, errorMessage, successMessage);
         }
     }
 
@@ -259,14 +266,10 @@ function URLMaster(dbName, userSystem) {
                 return createError(`Course ${alias} has not been found.`);
             }
             course.info[infoName] = info;
-            const err = await this.db.put(code, course).catch((error) => error);
             const infoDescriber = this.getInfoDescriber(alias, infoName);
-            if (err) {
-                return createError(`Fail in saving info ${infoDescriber}: ${info}`);
-            } else {
-                const response = `Info of lecture ${infoDescriber} has been successfully added as ${info}.`;
-                return createResponse(response);
-            }
+            const errorMessage = `Fail in saving info ${infoDescriber}: ${info}`;
+            const successMessage = `Info of lecture ${infoDescriber} has been successfully added as ${info}.`;
+            return await this.setCourse(code, course, errorMessage, successMessage);
         }
     }
     this.addLectureService = async ({userId, code, name}) => {
@@ -282,12 +285,9 @@ function URLMaster(dbName, userSystem) {
             return createError(`Course of code ${code} already exists.`);
         }
         course = newCourse({name}); 
-        const err = await this.db.put(code, course).catch((error) => error);
-        if (err) {
-            return createError(`Fail in initializing lecture ${name} of code ${code}.`);
-        } else {
-            return createResponse(`Lecture ${name} has been successfully created with code ${code}.`);
-        }
+        const errorMessage = `Fail in initializing lecture ${name} of code ${code}.`;
+        const successMessage = `Lecture ${name} has been successfully created with code ${code}.`;
+        return await this.setCourse(code, course, errorMessage, successMessage);
     }
     this.attendLectureService = async ({userId, code}) => {
         const course = await this.getCourse(code);
