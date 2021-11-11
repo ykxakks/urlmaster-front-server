@@ -4,6 +4,7 @@ const level = require('level');
 const { createError, createResponse } = require('./response/response');
 const { encodeCourseList, createCourse } = require('./course/courseFuncs');
 const { stringFromObj } = require('./funcs/stringFromObj')
+const { httpGet, httpPost, apiHost, apiPath, apiPort } = require('./funcs/httpFuncs');
 
 const defaultDBName = 'course';
 
@@ -35,11 +36,11 @@ function courseDetail(code, course, isAttending) {
 const defaultSetCourseSuccessMessage = "Course has been successfully set.";
 const defaultSetCourseErrorMessage = "Course has not been successfully set.";
 
-function URLMaster(dbName, userSystem) {
+function URLMaster(userSystem) {
     this.userSystem = userSystem;
-    this.dbName = dbName || defaultDBName;
-    this.dbName = './leveldb/' + this.dbName;
-    this.db = level(this.dbName, { valueEncoding: 'json' });
+    // this.dbName = dbName || defaultDBName;
+    // this.dbName = './leveldb/' + this.dbName;
+    // this.db = level(this.dbName, { valueEncoding: 'json' });
 
     this.dispatch = async (action) => {
         // what should action contains?
@@ -109,30 +110,70 @@ function URLMaster(dbName, userSystem) {
         return course.info[infoName];
     }
     this.getCourseList = async () => {
-        const courseArray = [];
-        return new Promise((resolve, reject) => {
-            this.db.createReadStream()
-            .on('data', (data) => {
-                // courseArray.push({code: data.key, name: data.value.name});
-                courseArray.push(createCourse(data.key, data.value.name));
-            })
-            .on('error', err => {
-                reject(err);
-            })
-            .on('close', () => {
-                resolve(courseArray);
-            });
-        });
+        const options = {
+            hostname: apiHost,
+            port: apiPort,
+            path: apiPath + `/course/all`,
+            method: 'GET'
+        };
+    
+        const response = await httpGet(options);
+        // console.log(response);
+        if (response.status === 'success') {
+            return response.response;
+        } else {
+            // show error message here
+            return null;
+        }
+        // const courseArray = [];
+        // return new Promise((resolve, reject) => {
+        //     this.db.createReadStream()
+        //     .on('data', (data) => {
+        //         // courseArray.push({code: data.key, name: data.value.name});
+        //         courseArray.push(createCourse(data.key, data.value.name));
+        //     })
+        //     .on('error', err => {
+        //         reject(err);
+        //     })
+        //     .on('close', () => {
+        //         resolve(courseArray);
+        //     });
+        // });
     }
     this.getCourse = async (code) => {
-        return await this.db.get(code).catch(() => {});
+        const options = {
+            hostname: apiHost,
+            port: apiPort,
+            path: apiPath + `/course/${code}`,
+            method: 'GET'
+        };
+        const response = await httpGet(options);
+        if (response.status === 'success') {
+            return response.response;
+        } else {
+            // show error message here
+            return null;
+        }
+        // return await this.db.get(code).catch(() => {});
     }
     this.setCourse = async (code, course, errorMessage, successMessage) => {
-        const err = await this.db.put(code, course).catch((error) => error);
-        if (err) {
-            return createError(errorMessage || defaultSetCourseErrorMessage);
+        // const err = await this.db.put(code, course).catch((error) => error);
+        // if (err) {
+        //     return createError(errorMessage || defaultSetCourseErrorMessage);
+        // } else {
+        //     return createResponse(successMessage || defaultSetCourseSuccessMessage);
+        // }
+        const options = {
+            hostname: apiHost,
+            port: apiPort,
+            path: apiPath + `/course/${code}`,
+            method: 'POST'
+        };
+        const response = await httpPost(options, course);
+        if (response.status === 'success') {
+            return createResponse(successMessage || response.response);
         } else {
-            return createResponse(successMessage || defaultSetCourseSuccessMessage);
+            return createError(errorMessage || response.msg);
         }
     }
 
