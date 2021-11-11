@@ -13,8 +13,7 @@ const app = new App({
 });
 
 const userSystem = new UserSystem([checkDomain]);
-const urlMaster = new URLMaster('urls', userSystem);
-// console.log(urlMaster.db);
+const urlMaster = new URLMaster(userSystem);
 
 app.message('list', async({ message, say }) => {
     const contents = checkParameter(message, 'list', 1);

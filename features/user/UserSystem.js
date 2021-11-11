@@ -5,6 +5,7 @@ const { createValidationMail } = require('../mail/mailTemplates');
 const { createResponse, createError } = require('../response/response');
 const randomFns = require('../funcs/randomFns');
 const { stringFromObj } = require('../funcs/stringFromObj');
+const { httpGet, httpPost, apiHost, apiPath, apiPort } = require('../funcs/httpFuncs');
 
 // function createUser(mailAddress) {
 //     return {
@@ -13,11 +14,11 @@ const { stringFromObj } = require('../funcs/stringFromObj');
 //     };
 // }
 
-function newUser({mail, validationCode}) {
+function newUser({mail, code}) {
     const user = {};
     user.activated = false;
     user.mail = mail;
-    user.validationCode = validationCode;
+    user.code = code;
     user.courses = [];
     user.alias = {};
 
@@ -31,10 +32,10 @@ const defaultSetUserSuccessMessage = "User has been successfully set.";
 const defaultSetUserErrorMessage = "User has not been successfully set.";
 
 function UserSystem(mailCheckers) {
-    this.dbName = 'user';
-    this.dbName = './leveldb/' + this.dbName;
+    // this.dbName = 'user';
+    // this.dbName = './leveldb/' + this.dbName;
 
-    this.db = level(this.dbName, { valueEncoding: 'json' });
+    // this.db = level(this.dbName, { valueEncoding: 'json' });
     this.mailCheckers = Array.from([validateEmail]);
     if (mailCheckers && Array.isArray(mailCheckers)) {
         this.mailCheckers = this.mailCheckers.concat(mailCheckers);
@@ -83,31 +84,90 @@ function UserSystem(mailCheckers) {
     }
 
     this.getUser = async (userId) => {
-        return this.db.get(userId).catch(() => {});
+        // return this.db.get(userId).catch(() => {});
+        const options = {
+            hostname: apiHost,
+            port: apiPort,
+            path: apiPath + `/user/${userId}`,
+            method: 'GET'
+        };
+        const response = await httpGet(options);
+        if (response.status === 'success') {
+            return response.response;
+        } else {
+            // show error message here
+            return null;
+        }
     }
     this.setUser = async (userId, user, errorMessage, successMessage) => {
-        const err = await this.db.put(userId, user).catch((error) => error);
-        if (err) {
-            return createError(errorMessage || defaultSetUserErrorMessage);
+        // const err = await this.db.put(userId, user).catch((error) => error);
+        // if (err) {
+        //     return createError(errorMessage || defaultSetUserErrorMessage);
+        // } else {
+        //     return createResponse(successMessage || defaultSetUserSuccessMessage);
+        // }
+        const options = {
+            hostname: apiHost,
+            port: apiPort,
+            path: apiPath + `/user/${userId}`,
+            method: 'POST'
+        };
+        const response = await httpPost(options, user);
+        // console.log(response);
+        if (response.status === 'success') {
+            return createResponse(successMessage || response.response);
         } else {
-            return createResponse(successMessage || defaultSetUserSuccessMessage);
+            return createError(errorMessage || response.msg);
         }
     }
     this.getAllUserId = async () => {
-        const keyArray = [];
-        return new Promise((resolve, reject) => {
-            this.db.createKeyStream()
-            .on('data', (key) => {
-                // courseArray.push({code: data.key, name: data.value.name});
-                keyArray.push(key);
-            })
-            .on('error', err => {
-                reject(err);
-            })
-            .on('close', () => {
-                resolve(keyArray);
-            });
-        });
+        const options = {
+            hostname: apiHost,
+            port: apiPort,
+            path: apiPath + `/user/all`,
+            method: 'GET'
+        };
+    
+        const response = await httpGet(options);
+        if (response.status === 'success') {
+            return response.response;
+        } else {
+            // show error message here
+            return null;
+        }
+        // const keyArray = [];
+        // return new Promise((resolve, reject) => {
+        //     this.db.createKeyStream()
+        //     .on('data', (key) => {
+        //         // courseArray.push({code: data.key, name: data.value.name});
+        //         keyArray.push(key);
+        //     })
+        //     .on('error', err => {
+        //         reject(err);
+        //     })
+        //     .on('close', () => {
+        //         resolve(keyArray);
+        //     });
+        // });
+    }
+
+    this.activateUser = async (userId, validationCode) => {
+        const errorMessage = "Error in activating your account!";
+        const successMessage = "Your account has been activated!";
+        // const response = await this.setUser(userId, {
+        //     ...user, activated: true
+        // }, errorMessage, successMessage);
+        // return response;
+
+        const options = {
+            hostname: apiHost,
+            port: apiPort,
+            path: apiPath + `/user/activate/${userId}?code=${validationCode}`,
+            method: 'GET'
+        };
+        const response = await httpGet(options);
+        console.log(response);
+        return response;
     }
 
     this.registerService = async ({userId, mailAddress, passcode}) => {
@@ -142,30 +202,32 @@ function UserSystem(mailCheckers) {
                 const successMessage = "Validation email has been sent to your email address, please activate your account via the code sent.";
                 const response = await this.setUser(userId, newUser({
                     mail: mailAddress, 
-                    validationCode,
+                    code: validationCode,
                 }), errorMessage, successMessage);
                 resolve(response);
             });
         });
     }
     this.activateService = async ({userId, validationCode}) => {
-        let user = await this.getUser(userId);
-        if (!user) {
-            return createError("You have not registered yet. Send register <email-address> <passcode> to receive a activation mail.");
-        }
-        if (user && user.activated) {
-            return createError("You have already activated your account!");
-        }
-        if (validationCode === user.validationCode) {
-            const errorMessage = "Error in activating your account!";
-            const successMessage = "Your account has been activated!";
-            const response = await this.setUser(userId, {
-                ...user, activated: true
-            }, errorMessage, successMessage);
-            return response;
-        } else {
-            return createError("Incorrect validation code.");
-        }
+        return await this.activateUser(userId, validationCode);
+        // let user = await this.getUser(userId);
+        // if (!user) {
+        //     return createError("You have not registered yet. Send register <email-address> <passcode> to receive a activation mail.");
+        // }
+        // if (user && user.activated) {
+        //     return createError("You have already activated your account!");
+        // }
+        // if (validationCode === user.validationCode) {
+        //     // const errorMessage = "Error in activating your account!";
+        //     // const successMessage = "Your account has been activated!";
+        //     // const response = await this.setUser(userId, {
+        //     //     ...user, activated: true
+        //     // }, errorMessage, successMessage);
+        //     // return response;
+        //     return await this.activateUser(userId, user);
+        // } else {
+        //     return createError("Incorrect validation code.");
+        // }
     }
 
     this.getCourseListService = async ({userId}) => {
