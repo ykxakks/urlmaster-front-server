@@ -6,8 +6,8 @@ send urls for lectures
 ## Installation
 
 ```console
-git clone https://github.com/ykxakks/urlmaster
-cd urlmaster
+git clone https://github.com/ykxakks/urlmaster-front-server
+cd urlmaster-front-server
 npm install 
 ```
 
