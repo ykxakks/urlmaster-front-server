@@ -3,3 +3,6 @@ package-lock.json
 
 leveldb/
 leveldb-backup/
+
+# templates
+local-templates/
