@@ -7,6 +7,8 @@ const randomFns = require('../funcs/randomFns');
 const { stringFromObj } = require('../funcs/stringFromObj');
 const { httpGet, httpPost, apiHost, apiPath, apiPort } = require('../funcs/httpFuncs');
 
+const { checkDomain } = require('../mail/validateEmail');
+
 // function createUser(mailAddress) {
 //     return {
 //         mail: mailAddress, 
@@ -405,4 +407,6 @@ function UserSystem(mailCheckers) {
     }
 }
 
-module.exports = UserSystem;
+const userSystem = new UserSystem([checkDomain]);
+
+module.exports = userSystem;

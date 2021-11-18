@@ -1,5 +1,15 @@
 const { App } = require('@slack/bolt');
-const { listeners, getCommand } = require('./features/listeners/listeners');
+// const { listeners, getCommand } = require('./features/listeners/listeners');
+// const { actionListeners, getActionId } = require('./features/listeners/actionListeners');
+const { appendMessageListeners } = require('./features/listeners/listeners');
+const { appendActionListeners } = require('./features/listeners/actionListeners');
+const { appendViewListeners } = require('./features/listeners/viewListeners');
+const { appendShortcutListeners } = require('./features/listeners/shortcutListeners');
+const { loadJSON } = require('./features/funcs/jsonLoader');
+const userSystem = require('./features/user/UserSystem');
+const urlMaster = require('./features/urlmaster-level');
+const { ConsoleLogger } = require('@slack/logger');
+const renderer = require('./features/render/renderer');
 
 const app = new App({
     token: process.env.SLACK_BOT_TOKEN,
@@ -8,9 +18,10 @@ const app = new App({
     appToken: process.env.SLACK_APP_TOKEN
 });
 
-for (let listenerName in listeners) {
-    app.message(getCommand(listenerName), listeners[listenerName]);
-}
+appendMessageListeners(app);
+appendActionListeners(app);
+appendViewListeners(app);
+appendShortcutListeners(app);
 
 (async () => {
     await app.start(process.env.PORT || 3000);
