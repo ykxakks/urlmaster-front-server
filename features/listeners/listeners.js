@@ -1,10 +1,8 @@
-const URLMaster = require('../urlmaster-level');
-const UserSystem = require('../user/UserSystem');
-const { decodeEmail, checkDomain } = require('../mail/validateEmail');
+const { decodeEmail } = require('../mail/validateEmail');
 const checkParameter = require('../funcs/checkParameter');
-
-const userSystem = new UserSystem([checkDomain]);
-const urlMaster = new URLMaster(userSystem);
+// const userSystem = require('../user/UserSystem');
+const urlMaster = require('../urlmaster-level');
+const renderer = require('../render/renderer');
 
 const listListener = async({ message, say }) => {
     const contents = checkParameter(message, 'list', 1);
@@ -273,6 +271,7 @@ const detailListener = async({ message, say }) => {
     if (res.status === 'error') {
         await say(res.msg);
     } else {
+        console.log(res.response);
         await say(res.response);
     }
 };
@@ -292,6 +291,11 @@ const myaliasListener = async({ message, say }) => {
         await say(res.response);
     }
 };
+
+const searchListener = async({ message, say }) => {
+    const searchResponse = renderer.searchResponse();
+    await say(searchResponse);
+}
 
 const listeners = {
     'list': listListener,
@@ -324,5 +328,12 @@ const getCommand = (command) => {
     }
 }
 
-exports.listeners = listeners;
-exports.getCommand = getCommand;
+const appendMessageListeners = (app) => {
+    for (let listenerName in listeners) {
+        app.message(getCommand(listenerName), listeners[listenerName]);
+    }
+}
+
+// exports.listeners = listeners;
+// exports.getCommand = getCommand;
+exports.appendMessageListeners = appendMessageListeners;

@@ -2,36 +2,13 @@
 
 const level = require('level');
 const { createError, createResponse } = require('./response/response');
-const { encodeCourseList, createCourse } = require('./course/courseFuncs');
+const { encodeCourseList, createCourse, courseDetail, courseDetailBlock, newCourse } = require('./course/courseFuncs');
 const { stringFromObj } = require('./funcs/stringFromObj')
 const { httpGet, httpPost, apiHost, apiPath, apiPort } = require('./funcs/httpFuncs');
+const userSystem = require('./user/UserSystem');
+const { decodeURL } = require('./funcs/urlDecoder');
 
 const defaultDBName = 'course';
-
-function newCourse({name}) {
-    const course = {};
-    course.name = name;
-    course.info = {};
-    course.urls = {};
-    course.defaultURL = null;
-    return course;
-}
-
-function courseDetail(code, course, isAttending) {
-    const basicInfo = `${code} ${course.name}` + ((isAttending) ? ' (attending)' : ' (not attending)');
-    if (!isAttending) {
-        return basicInfo;
-    }
-    let extendInfo = '';
-    if (course.defaultURL) {
-        extendInfo += `\nDefault URL: ${course.defaultURL}`;
-    }
-    const infoString = stringFromObj('info', course.info);
-    const urlString = stringFromObj('urls', course.urls);
-    extendInfo += infoString;
-    extendInfo += urlString;
-    return basicInfo + extendInfo;
-}
 
 const defaultSetCourseSuccessMessage = "Course has been successfully set.";
 const defaultSetCourseErrorMessage = "Course has not been successfully set.";
@@ -81,6 +58,9 @@ function URLMaster(userSystem) {
             case 'register': case 'activate': case 'myalias': case 'unset-alias': case 'retire': {
                 return this.userSystem.dispatch(action);
             }
+            case 'search': {
+                return this.searchService(action);
+            }
             default: {
                 return createError(`command ${action.command} not found`);
             }
@@ -108,6 +88,31 @@ function URLMaster(userSystem) {
             return null;
         }
         return course.info[infoName];
+    }
+    this.searchCourse = async (day, period) => {
+        const dayQuery = day ? `day=${day}` : '';
+        const periodQuery = period ? `period=${period}` : '';
+        const querys = [];
+        if (dayQuery) {
+            querys.push(dayQuery);
+        }
+        if (periodQuery) {
+            querys.push(periodQuery);
+        }
+        const options = {
+            hostname: apiHost, 
+            port: apiPort, 
+            path: apiPath + `/course/search/query?${querys.join('&')}`,
+            method: 'GET'
+        };
+
+        const response = await httpGet(options);
+        if (response.status === 'success') {
+            return response.response;
+        } else {
+            // show error message here
+            return null;
+        }
     }
     this.getCourseList = async () => {
         const options = {
@@ -243,6 +248,7 @@ function URLMaster(userSystem) {
     }
     
     this.addURLService = async ({userId, alias, urlName, url}) => {
+        const decodedURL = decodeURL(url);
         const checkUserResponse = await this.userSystem.dispatch({
             command: 'check-user',
             userId
@@ -258,7 +264,7 @@ function URLMaster(userSystem) {
         let existURL = await this.getURL(code, urlName);
         if (existURL) {
             const urlDescriber = this.getURLDescriber(alias, urlName);
-            if (existURL === url) {
+            if (existURL === decodedURL) {
                 return createError(`URL ${urlDescriber} has already been set.`);
             } else {
                 return createError(`URL ${urlDescriber} has already been set to ${existURL}.`);
@@ -269,13 +275,13 @@ function URLMaster(userSystem) {
                 return createError(`Course ${alias} has not been found.`);
             }
             if (!urlName || urlName === 'default') {
-                course.defaultURL = url;
+                course.defaultURL = decodedURL;
             } else {
-                course.urls[urlName] = url;
+                course.urls[urlName] = decodedURL;
             }
             const urlDescriber = this.getURLDescriber(alias, urlName);
-            const successMessage = `URL of lecture ${urlDescriber} has been successfully added as ${url}.`;
-            const errorMessage = `Fail in saving url ${urlDescriber}: ${url}`;
+            const successMessage = `URL of lecture ${urlDescriber} has been successfully added as ${decodedURL}.`;
+            const errorMessage = `Fail in saving url ${urlDescriber}: ${decodedURL}`;
             return await this.setCourse(code, course, errorMessage, successMessage);
         }
     }
@@ -371,9 +377,23 @@ function URLMaster(userSystem) {
         if (!course) {
             return createError(`Course ${alias} does not exist.`);
         }
-        const response = courseDetail(code, course, isAttending);
+        // const response = courseDetail(code, course, isAttending);
+        const response = await courseDetailBlock(code, course, isAttending);
         return createResponse(response);
+    }
+
+    this.searchService = async ({ day, period }) => {
+        const courses = await this.searchCourse(day, period);
+        if (courses) {
+            return createResponse(courses);
+        } else {
+            return createError('Error in searching courses.');
+        }
+        // console.log(courses);
+        // return courses;
     }
 }
 
-module.exports = URLMaster;
+const urlMaster = new URLMaster(userSystem);
+
+module.exports = urlMaster;
