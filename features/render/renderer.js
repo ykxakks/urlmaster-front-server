@@ -56,10 +56,6 @@ const createAttachments = (blocks, text, color) => {
     return res;
 }
 
-const searchResponse = () => {
-
-}
-
 const selectBlock = ({blockId, label, elemId, options, values, initialOption}) => {
     if (!values) {
         values = options;

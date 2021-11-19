@@ -5,11 +5,6 @@ const { appendMessageListeners } = require('./features/listeners/listeners');
 const { appendActionListeners } = require('./features/listeners/actionListeners');
 const { appendViewListeners } = require('./features/listeners/viewListeners');
 const { appendShortcutListeners } = require('./features/listeners/shortcutListeners');
-const { loadJSON } = require('./features/funcs/jsonLoader');
-const userSystem = require('./features/user/UserSystem');
-const urlMaster = require('./features/urlmaster-level');
-const { ConsoleLogger } = require('@slack/logger');
-const renderer = require('./features/render/renderer');
 
 const app = new App({
     token: process.env.SLACK_BOT_TOKEN,
